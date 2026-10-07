@@ -1,3 +1,2 @@
 streamlit
-pyPDF2
-gTTS
+pypdf
