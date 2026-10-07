@@ -1,75 +1,128 @@
 import streamlit as st
-import PyPDF2
-from gtts import gTTS
-import tempfile
+from pypdf import PdfReader
+import streamlit.components.v1 as components
+import json
 
 st.set_page_config(
-    page_title="PDF to Voice Converter",
+    page_title="Smart PDF App",
     page_icon="🔊"
 )
 
-st.title("📄 PDF to Voice Converter")
-st.write("Upload a PDF file and convert its text into voice.")
+st.title("📄Smart PDF App")
+st.write("Upload a PDF file and listen to it as voice.")
 
 uploaded_file = st.file_uploader(
-    "Choose a PDF file",
+    "📄 Upload your PDF",
     type=["pdf"]
 )
 
 if uploaded_file is not None:
-    st.success("PDF uploaded successfully!")
 
-    pdf_reader = PyPDF2.PdfReader(uploaded_file)
+    st.success("✅ PDF uploaded successfully!")
+
+    reader = PdfReader(uploaded_file)
+
     text = ""
 
-    for page in pdf_reader.pages:
+    for page in reader.pages:
         page_text = page.extract_text()
+
         if page_text:
             text += page_text + "\n"
 
-    if text.strip():
+    text = text.strip()
+
+    if text:
+
         st.subheader("📖 Extracted Text")
-        st.text_area("Text from PDF", text, height=300)
+
+        st.text_area(
+            "PDF Text",
+            text,
+            height=250
+        )
 
         language = st.selectbox(
-            "Select Voice Language",
+            "🌐 Select Language",
             [
-                ("English", "en"),
-                ("Tamil", "ta"),
-                ("Hindi", "hi")
+                ("English", "en-IN"),
+                ("Tamil", "ta-IN"),
+                ("Hindi", "hi-IN")
             ]
         )
 
+        language_code = language[1]
+
         if st.button("🔊 Convert to Voice"):
-            with st.spinner("Converting..."):
-                selected_language = language[1]
 
-                tts = gTTS(
-                    text=text,
-                    lang=selected_language,
-                    slow=False
-                )
+            safe_text = json.dumps(text)
 
-                audio_file = tempfile.NamedTemporaryFile(
-                    delete=False,
-                    suffix=".mp3"
-                )
+            html_code = f"""
+            <!DOCTYPE html>
+            <html>
+            <body>
 
-                tts.save(audio_file.name)
+            <button onclick="speakText()"
+                    style="
+                    font-size:18px;
+                    padding:12px 25px;
+                    cursor:pointer;
+                    ">
+                ▶️ Play Voice
+            </button>
 
-                st.success("Voice conversion completed!")
+            <button onclick="stopVoice()"
+                    style="
+                    font-size:18px;
+                    padding:12px 25px;
+                    cursor:pointer;
+                    margin-left:10px;
+                    ">
+                ⏹️ Stop
+            </button>
 
-                st.audio(
-                    audio_file.name,
-                    format="audio/mp3"
-                )
+            <script>
 
-                with open(audio_file.name, "rb") as file:
-                    st.download_button(
-                        "⬇️ Download Voice",
-                        data=file,
-                        file_name="pdf_voice.mp3",
-                        mime="audio/mp3"
-                    )
+            const text = {safe_text};
+
+            function speakText() {{
+
+                window.speechSynthesis.cancel();
+
+                const speech =
+                    new SpeechSynthesisUtterance(text);
+
+                speech.lang = "{language_code}";
+                speech.rate = 0.9;
+                speech.pitch = 1.0;
+                speech.volume = 1.0;
+
+                window.speechSynthesis.speak(speech);
+            }}
+
+            function stopVoice() {{
+
+                window.speechSynthesis.cancel();
+
+            }}
+
+            </script>
+
+            </body>
+            </html>
+            """
+
+            st.success(
+                "🎉 PDF converted to voice successfully!"
+            )
+
+            components.html(
+                html_code,
+                height=100
+            )
+
     else:
-        st.error("No readable text found in this PDF.")
+
+        st.error(
+            "❌ No readable text found in this PDF."
+        )
